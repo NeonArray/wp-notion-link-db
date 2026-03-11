@@ -1,8 +1,10 @@
 {
+  "unstable": [
+    "kv"
+  ],
   "tasks": {
-    "dev": "deno run --watch main.ts",
     "reset": "deno run --unstable-kv reset_kv.ts",
-    "exec": "deno run --allow-net --allow-read --allow-env --allow-write --unstable-kv main.ts"
+    "dev": "deno run --allow-net --allow-read --allow-env --allow-write --unstable-kv main.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

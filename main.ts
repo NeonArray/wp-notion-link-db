@@ -1,9 +1,27 @@
 import {Client} from "@notionhq/client";
 import type {PageObjectResponse, QueryDatabaseResponse,} from "@notionhq/client/build/src/api-endpoints.d.ts";
 
-const kv = await Deno.openKv();
 const CACHE_KEY = ["plugins"];
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+// Lazy KV initialization to handle environments where it might be missing or unstable
+let _kv: Deno.Kv | null = null;
+async function getKv(): Promise<Deno.Kv | null> {
+  if (_kv) return _kv;
+  if (typeof Deno.openKv !== "function") {
+    console.warn(
+      "Deno.openKv is not available. Please run with --unstable-kv flag if using Deno < 2.0.",
+    );
+    return null;
+  }
+  try {
+    _kv = await Deno.openKv();
+    return _kv;
+  } catch (err) {
+    console.error("Failed to open Deno KV:", err);
+    return null;
+  }
+}
 
 interface PluginInfo {
   plugin: string;
@@ -115,7 +133,9 @@ async function fetchFromNotion(): Promise<PluginInfo[]> {
  * Gets plugins from KV cache or fetches from Notion if expired or missing.
  */
 async function getPlugins(forceRefresh = false): Promise<PluginInfo[]> {
-  if (!forceRefresh) {
+  const kv = await getKv();
+
+  if (!forceRefresh && kv) {
     const cached = await kv.get<{ data: PluginInfo[]; timestamp: number }>(
       CACHE_KEY,
     );
@@ -134,11 +154,13 @@ async function getPlugins(forceRefresh = false): Promise<PluginInfo[]> {
 
   const results = await fetchFromNotion();
 
-  // Update KV cache
-  await kv.set(CACHE_KEY, {
-    data: results,
-    timestamp: Date.now(),
-  });
+  // Update KV cache if available
+  if (kv) {
+    await kv.set(CACHE_KEY, {
+      data: results,
+      timestamp: Date.now(),
+    });
+  }
 
   // Local file generation (optional, mainly for local dev)
   try {
