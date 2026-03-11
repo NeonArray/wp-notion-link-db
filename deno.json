@@ -1,6 +1,7 @@
 {
   "unstable": [
-    "kv"
+    "kv",
+    "cron"
   ],
   "tasks": {
     "reset": "deno run --unstable-kv reset_kv.ts",
